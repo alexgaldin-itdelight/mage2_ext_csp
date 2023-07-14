@@ -1,0 +1,94 @@
+<?php declare(strict_types=1);
+
+namespace Flancer32\Csp\App\Ui\DataProvider\Admin;
+
+/**
+ * Add an ability of extending the dataProvider data via XML
+ * 
+ * @see \Flancer32\Base\App\Ui\DataProvider\Admin\Grid
+ */
+class Grid
+    extends \Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider
+{
+    /** @var \Flancer32\Base\App\Repo\Query\ClauseSet\Adapter */
+    protected $adptClauseSet;
+    /** @var  \Magento\Framework\DB\Adapter\AdapterInterface */
+    protected $conn;
+    /** @var \Flancer32\Base\App\Repo\Query\ClauseSet\Processor */
+    protected $procClauseSet;
+    /** @var \Flancer32\Base\App\Repo\Query\Grid */
+    protected $qGrid;
+    /** @var \Magento\Framework\App\ResourceConnection */
+    protected $resource;
+
+    public function __construct(
+        $name,
+        \Flancer32\Base\App\Repo\Query\Grid $qGrid,
+        array $customData = []
+    ) {
+        /* create objects using manager (yes, it's not a good practice) */
+        /** @var \Magento\Framework\ObjectManagerInterface $obm */
+        $obm = \Magento\Framework\App\ObjectManager::getInstance();
+        $resource = $obm->get(\Magento\Framework\App\ResourceConnection::class);
+        $reporting = $obm->get(\Magento\Framework\Api\Search\ReportingInterface::class);
+        $searchCriteriaBuilder = $obm->get(\Magento\Framework\Api\Search\SearchCriteriaBuilder::class);
+        $request = $obm->get(\Magento\Framework\App\RequestInterface::class);
+        $filterBuilder = $obm->get(\Magento\Framework\Api\FilterBuilder::class);
+        $url = $obm->get(\Magento\Backend\Model\UrlInterface::class);
+        $adptClauseSet = $obm->get(\Flancer32\Base\App\Repo\Query\ClauseSet\Adapter::class);
+        $procClauseSet = $obm->get(\Flancer32\Base\App\Repo\Query\ClauseSet\Processor::class);
+
+        /* hardcoded args */
+        $primaryFieldName = 'id';
+        $requestFieldName = 'id';
+        $meta = [];
+        $updateUrl = $url->getUrl('mui/index/render');
+        $data = array_merge_recursive(
+            [
+                'config' => [
+                    'component' => 'Magento_Ui/js/grid/provider',
+                    'update_url' => $updateUrl,
+                ]
+            ],
+            $customData
+        );
+
+        /* normal constructor as if args were passed */
+        parent::__construct(
+            $name,
+            $primaryFieldName,
+            $requestFieldName,
+            $reporting,
+            $searchCriteriaBuilder,
+            $request,
+            $filterBuilder,
+            $meta,
+            $data);
+        $this->resource = $resource;
+        $this->conn = $resource->getConnection();
+        $this->adptClauseSet = $adptClauseSet;
+        $this->procClauseSet = $procClauseSet;
+        $this->qGrid = $qGrid;
+    }
+
+    public function getData()
+    {
+        /* Magento API criteria */
+        $criteria = $this->getSearchCriteria();
+        $clauses = $this->adptClauseSet->getClauseSet($criteria);
+
+        $map = $this->qGrid->getAliasMap();
+        $qTotal = $this->qGrid->getCountQuery();
+        $this->procClauseSet->exec($qTotal, $clauses, $map, true);
+        $totals = $this->conn->fetchOne($qTotal);
+
+        $qItems = $this->qGrid->getSelectQuery();
+        $this->procClauseSet->exec($qItems, $clauses, $map);
+        $items = $this->conn->fetchAll($qItems);
+        $result = [
+            'items' => $items,
+            'totalRecords' => $totals
+        ];
+        return $result;
+    }
+}

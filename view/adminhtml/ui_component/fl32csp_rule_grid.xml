@@ -24,9 +24,16 @@
                 component="Magento_Ui/js/grid/provider">
         <argument name="dataProvider" xsi:type="configurableObject">
             <!--https://magento.stackexchange.com/questions/248611/magento-2-grid-data-source-definition-in-compact-form -->
-            <argument name="class" xsi:type="string">Flancer32\Base\App\Ui\DataProvider\Admin\Grid</argument>
+            <argument name="class" xsi:type="string">Flancer32\Csp\App\Ui\DataProvider\Admin\Grid</argument>
             <argument name="name" xsi:type="string">ds_for_grid</argument>
             <argument name="qGrid" xsi:type="object">Flancer32\Csp\Ui\DataProvider\Rule\Grid</argument>
+            <argument name="customData" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="storageConfig" xsi:type="array">
+                        <item name="indexField" xsi:type="string">Id</item>
+                    </item>
+                </item>
+            </argument>
         </argument>
     </dataSource>
 
